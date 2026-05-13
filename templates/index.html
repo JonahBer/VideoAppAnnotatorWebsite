@@ -1,0 +1,716 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>VideoAnnotations — Studio</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,700;9..144,900&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    /* Palette ported verbatim from timeline_viewer.html */
+    --bg:           #0e1014;
+    --panel:        #161922;
+    --panel-2:      #1d2230;
+    --ink:          #e8ecf3;
+    --ink-dim:      #8b93a7;
+    --ink-faint:    #4a5267;
+    --line:         #262b3a;
+
+    --no:           #2a3040;
+    --no-edge:      #353c52;
+    --yes:          #f0b429;
+    --yes-glow:     #f0b42955;
+    --perfect:      #21d07a;
+    --perfect-glow: #21d07a66;
+
+    --accent:       #6ea8ff;
+    --danger:       #ff6b6b;
+    --warn:         #ffb454;
+
+    --radius:       4px;
+    --shadow-lg:    0 30px 60px -20px rgba(0,0,0,.55), 0 10px 25px -10px rgba(0,0,0,.4);
+  }
+
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0; padding: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: 'JetBrains Mono', ui-monospace, Menlo, monospace;
+    font-size: 13px;
+    line-height: 1.5;
+    min-height: 100vh;
+  }
+  body {
+    background:
+      radial-gradient(1100px 600px at 85% -10%, rgba(110,168,255,.10), transparent 60%),
+      radial-gradient(900px 500px at -5% 105%, rgba(33,208,122,.07), transparent 60%),
+      var(--bg);
+  }
+  a { color: var(--accent); text-decoration: none; }
+  code, kbd { font-family: 'JetBrains Mono', monospace; }
+  kbd {
+    background: var(--panel-2); border: 1px solid var(--line);
+    border-radius: 3px; padding: 1px 6px; font-size: 11px;
+  }
+
+  .wrap { max-width: 1480px; margin: 0 auto; padding: 36px 32px 80px; }
+
+  /* ---------- Header ---------- */
+  header.app {
+    display: flex; align-items: flex-end; justify-content: space-between;
+    gap: 24px; margin-bottom: 18px; padding-bottom: 18px;
+    border-bottom: 1px solid var(--line);
+  }
+  .title-block h1 {
+    font-family: 'Fraunces', serif; font-weight: 900;
+    font-size: 38px; letter-spacing: -0.02em;
+    margin: 0 0 4px; line-height: 1;
+  }
+  .title-block h1 em { font-style: italic; font-weight: 400; color: var(--accent); }
+  .title-block p { margin: 0; color: var(--ink-dim); font-size: 12px; letter-spacing: 0.04em; }
+
+  .server-status {
+    font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase;
+    color: var(--ink-dim); display: flex; gap: 14px; align-items: center;
+  }
+  .server-status .dot {
+    width: 8px; height: 8px; border-radius: 50%;
+    background: var(--ink-faint); display: inline-block; margin-right: 6px;
+  }
+  .server-status .dot.ok { background: var(--perfect); box-shadow: 0 0 8px var(--perfect-glow); }
+  .server-status .dot.bad { background: var(--danger); }
+
+  /* ---------- Tabs ---------- */
+  nav.tabs {
+    display: flex; gap: 0; margin-bottom: 22px;
+    border-bottom: 1px solid var(--line);
+  }
+  nav.tabs button {
+    background: none; border: none; color: var(--ink-dim);
+    padding: 12px 22px 14px;
+    font-family: 'Fraunces', serif; font-weight: 500; font-size: 15px;
+    letter-spacing: 0.01em; cursor: pointer;
+    border-bottom: 2px solid transparent;
+    transition: color .15s ease, border-color .15s ease;
+    position: relative; top: 1px;
+  }
+  nav.tabs button:hover { color: var(--ink); }
+  nav.tabs button.active {
+    color: var(--accent);
+    border-bottom-color: var(--accent);
+  }
+  nav.tabs button em {
+    font-style: italic; font-weight: 400; opacity: .75; margin-left: 4px;
+  }
+
+  /* ---------- Panels (shared) ---------- */
+  .panel {
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    padding: 18px;
+  }
+  .panel h3 {
+    margin: 0 0 12px;
+    font-family: 'Fraunces', serif; font-weight: 500;
+    font-size: 14px; letter-spacing: 0.04em;
+    color: var(--ink-dim); text-transform: uppercase;
+  }
+
+  /* ---------- Inputs ---------- */
+  textarea, input[type="text"], input[type="number"], select {
+    width: 100%;
+    background: var(--panel-2); color: var(--ink);
+    border: 1px solid var(--line); border-radius: 3px;
+    padding: 8px 10px;
+    font-family: 'JetBrains Mono', monospace; font-size: 12px;
+    outline: none;
+  }
+  textarea { min-height: 140px; resize: vertical; line-height: 1.5; }
+  textarea:focus, input:focus, select:focus { border-color: var(--accent); }
+  input[type="file"] { display: none; }
+
+  button, .file-label {
+    background: var(--panel-2); color: var(--ink);
+    border: 1px solid var(--line); border-radius: 3px;
+    padding: 8px 14px;
+    font-family: 'JetBrains Mono', monospace; font-size: 12px;
+    letter-spacing: 0.04em; cursor: pointer;
+    transition: all .15s ease;
+    display: inline-block;
+  }
+  button:hover, .file-label:hover { border-color: var(--accent); color: var(--accent); }
+  button.primary {
+    background: var(--accent); color: #0b1020;
+    border-color: var(--accent); font-weight: 700;
+  }
+  button.primary:hover { background: #8fbcff; color: #0b1020; }
+  button.danger { color: var(--danger); }
+  button.danger:hover { border-color: var(--danger); }
+  button:disabled { opacity: .4; cursor: not-allowed; }
+  button.label-yes { color: var(--yes); }
+  button.label-no  { color: var(--ink-dim); }
+  button.label-perfect { color: var(--perfect); }
+  button.label-yes:hover     { border-color: var(--yes); }
+  button.label-no:hover      { border-color: var(--no-edge); }
+  button.label-perfect:hover { border-color: var(--perfect); }
+
+  .btn-row { display: flex; gap: 8px; flex-wrap: wrap; }
+
+  label.field {
+    display: flex; flex-direction: column; gap: 4px;
+    color: var(--ink-dim); font-size: 11px;
+    text-transform: uppercase; letter-spacing: 0.06em;
+  }
+  label.toggle {
+    display: flex; align-items: center; gap: 8px;
+    text-transform: none; letter-spacing: 0; font-size: 12px; color: var(--ink);
+    cursor: pointer; user-select: none;
+  }
+
+  .err   { color: var(--danger); font-size: 12px; margin-top: 8px; min-height: 18px; }
+  .info  { color: var(--ink-dim); font-size: 11px; margin-top: 8px; }
+
+  /* ---------- Tab views ---------- */
+  .view { display: none; }
+  .view.active { display: block; }
+
+  /* ---------- ANNOTATE view ---------- */
+  .ann-shell {
+    display: grid;
+    grid-template-columns: 1fr 320px;
+    gap: 22px;
+  }
+  @media (max-width: 1100px) { .ann-shell { grid-template-columns: 1fr; } }
+
+  .frame-stage {
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    padding: 18px;
+    display: flex; flex-direction: column; gap: 14px;
+    min-height: 580px;
+  }
+  .frame-info {
+    display: flex; justify-content: space-between; align-items: baseline;
+    gap: 12px; flex-wrap: wrap;
+  }
+  .frame-info .vid {
+    font-family: 'Fraunces', serif; font-weight: 500; font-size: 16px;
+    color: var(--ink); word-break: break-all;
+  }
+  .frame-info .ts {
+    font-family: 'JetBrains Mono', monospace; font-size: 12px;
+    color: var(--ink-dim); letter-spacing: 0.04em;
+  }
+  .frame-img-wrap {
+    flex: 1; display: flex; align-items: center; justify-content: center;
+    background: #06080c;
+    border: 1px solid var(--line); border-radius: 3px;
+    min-height: 420px; overflow: hidden;
+  }
+  .frame-img-wrap img {
+    max-width: 100%; max-height: 70vh;
+    display: block; user-select: none;
+  }
+  .frame-img-wrap .placeholder {
+    color: var(--ink-faint);
+    font-family: 'Fraunces', serif; font-style: italic; font-size: 18px;
+  }
+
+  .label-row {
+    display: grid; grid-template-columns: 1fr 1fr 1fr auto;
+    gap: 10px;
+  }
+  .label-row button {
+    padding: 14px;
+    font-size: 14px; letter-spacing: 0.06em; text-transform: uppercase; font-weight: 700;
+  }
+
+  .sidebar { display: flex; flex-direction: column; gap: 14px; }
+
+  .stat-block {
+    display: grid; grid-template-columns: 1fr 1fr 1fr;
+    gap: 0;
+    border: 1px solid var(--line); border-radius: var(--radius);
+    overflow: hidden;
+  }
+  .stat-block .cell {
+    padding: 12px 14px;
+    background: var(--panel);
+    border-right: 1px solid var(--line);
+  }
+  .stat-block .cell:last-child { border-right: none; }
+  .stat-block .lbl {
+    font-size: 9px; letter-spacing: 0.12em; text-transform: uppercase;
+    color: var(--ink-dim); margin-bottom: 4px;
+  }
+  .stat-block .val {
+    font-family: 'Fraunces', serif; font-weight: 500;
+    font-size: 22px; letter-spacing: -0.01em;
+  }
+  .stat-block .val.yes { color: var(--yes); }
+  .stat-block .val.no  { color: var(--ink); }
+  .stat-block .val.perfect { color: var(--perfect); }
+
+  .meter {
+    display: flex; flex-direction: column; gap: 6px;
+    font-size: 11px; color: var(--ink-dim);
+  }
+  .meter .bar {
+    height: 6px; background: var(--panel-2);
+    border: 1px solid var(--line); border-radius: 2px; overflow: hidden;
+  }
+  .meter .bar > div {
+    height: 100%; background: var(--accent);
+    transition: width .2s ease;
+  }
+
+  .keyhint {
+    font-size: 10px; letter-spacing: 0.06em; text-transform: uppercase;
+    color: var(--ink-faint); margin-top: 4px;
+  }
+
+  /* ---------- TIMELINE view (ported from timeline_viewer.html) ---------- */
+  .controls {
+    display: grid; grid-template-columns: 1fr 360px;
+    gap: 22px; margin-bottom: 22px;
+  }
+  @media (max-width: 960px) { .controls { grid-template-columns: 1fr; } }
+
+  .options {
+    display: grid; grid-template-columns: 1fr 1fr;
+    gap: 10px 16px; font-size: 12px;
+  }
+
+  .legend {
+    display: flex; gap: 18px; align-items: center;
+    font-size: 11px; letter-spacing: 0.06em; text-transform: uppercase;
+    color: var(--ink-dim);
+  }
+  .legend .swatch { display: inline-flex; align-items: center; gap: 8px; }
+  .legend .dot {
+    width: 14px; height: 14px; border-radius: 2px; display: inline-block;
+  }
+  .legend .dot.no      { background: var(--no); border: 1px solid var(--no-edge); }
+  .legend .dot.yes     { background: var(--yes); box-shadow: 0 0 12px var(--yes-glow); }
+  .legend .dot.perfect { background: var(--perfect); box-shadow: 0 0 14px var(--perfect-glow); }
+
+  .stats {
+    display: flex; gap: 0; margin-bottom: 22px;
+    border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden;
+  }
+  .stats .stat { flex: 1; padding: 14px 18px; background: var(--panel);
+                 border-right: 1px solid var(--line); }
+  .stats .stat:last-child { border-right: none; }
+  .stats .stat .label {
+    font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase;
+    color: var(--ink-dim); margin-bottom: 4px;
+  }
+  .stats .stat .value {
+    font-family: 'Fraunces', serif; font-size: 26px; font-weight: 500;
+    letter-spacing: -0.01em;
+  }
+  .stats .stat .value .unit {
+    font-size: 13px; color: var(--ink-dim); margin-left: 4px;
+    font-family: 'JetBrains Mono', monospace;
+  }
+
+  .rows { display: flex; flex-direction: column; gap: 14px; }
+  .row {
+    background: var(--panel); border: 1px solid var(--line);
+    border-radius: var(--radius); padding: 16px 18px;
+    transition: border-color .15s ease;
+  }
+  .row:hover { border-color: #323849; }
+  .row-head {
+    display: flex; justify-content: space-between; align-items: baseline;
+    gap: 12px; margin-bottom: 10px;
+  }
+  .row .name {
+    font-family: 'Fraunces', serif; font-weight: 500; font-size: 17px;
+    letter-spacing: -0.005em; color: var(--ink); word-break: break-all;
+  }
+  .row .meta {
+    display: flex; gap: 14px; font-size: 11px;
+    letter-spacing: 0.04em; color: var(--ink-dim);
+    text-transform: uppercase; flex-shrink: 0;
+  }
+  .row .meta .pill { display: inline-flex; align-items: center; gap: 5px; }
+  .row .meta .pill .mini { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+  .row .meta .mini.no      { background: var(--no-edge); }
+  .row .meta .mini.yes     { background: var(--yes); }
+  .row .meta .mini.perfect { background: var(--perfect); }
+
+  .bar-frame {
+    position: relative; height: 36px;
+    background: var(--panel-2); border: 1px solid var(--line);
+    border-radius: 3px; overflow: hidden; display: flex;
+  }
+  .seg { height: 100%; flex: 1 1 0; min-width: 0; border-right: 1px solid rgba(255,255,255,.025); }
+  .seg:last-child { border-right: none; }
+  .seg.empty   { background: transparent; }
+  .seg.no      { background: rgba(255,255,255,.045); }
+  .seg.yes     { background: var(--yes); box-shadow: inset 0 0 8px rgba(0,0,0,.25); }
+  .seg.perfect { background: var(--perfect); box-shadow: inset 0 0 10px rgba(0,0,0,.25); }
+  .seg { cursor: crosshair; }
+  .seg:hover { filter: brightness(1.25); outline: 1px solid rgba(255,255,255,.4); outline-offset: -1px; }
+
+  .axis {
+    position: relative; height: 18px; margin-top: 6px;
+    color: var(--ink-faint); font-size: 10px; letter-spacing: 0.04em;
+  }
+  .tick {
+    position: absolute; top: 0; transform: translateX(-50%); white-space: nowrap;
+  }
+  .tick::before {
+    content: ""; display: block; width: 1px; height: 4px;
+    background: var(--ink-faint); margin: 0 auto 2px;
+  }
+
+  .empty-state {
+    padding: 60px 20px; text-align: center; color: var(--ink-dim);
+    border: 1px dashed var(--line); border-radius: var(--radius);
+  }
+  .empty-state .big {
+    font-family: 'Fraunces', serif; font-style: italic;
+    font-size: 22px; margin-bottom: 6px; color: var(--ink);
+  }
+
+  /* tooltip (timeline) */
+  .tooltip {
+    position: fixed; pointer-events: none;
+    background: #0b0d12; border: 1px solid var(--line); color: var(--ink);
+    padding: 8px 10px; border-radius: 3px; font-size: 11px;
+    box-shadow: var(--shadow-lg);
+    opacity: 0; transition: opacity .1s ease;
+    z-index: 100; white-space: nowrap;
+  }
+  .tooltip.show { opacity: 1; }
+  .tooltip .lab {
+    font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; margin-right: 6px;
+  }
+  .tooltip .lab.no { color: var(--ink-dim); }
+  .tooltip .lab.yes { color: var(--yes); }
+  .tooltip .lab.perfect { color: var(--perfect); }
+
+  /* ---------- LOG VIEWER (cropper + concat) ---------- */
+  .log {
+    background: #06080c; border: 1px solid var(--line); border-radius: 3px;
+    padding: 12px 14px;
+    font-family: 'JetBrains Mono', monospace; font-size: 11px;
+    line-height: 1.55; color: var(--ink-dim);
+    max-height: 480px; overflow-y: auto;
+    white-space: pre-wrap; word-break: break-all;
+  }
+  .log .ok    { color: var(--perfect); }
+  .log .warn  { color: var(--warn); }
+  .log .err   { color: var(--danger); }
+  .log .info  { color: var(--ink-dim); }
+
+  .summary-card {
+    background: var(--panel-2); border: 1px solid var(--line);
+    border-radius: 3px; padding: 14px 16px; margin-top: 12px;
+    font-size: 12px;
+  }
+  .summary-card .row-kv {
+    display: flex; justify-content: space-between; padding: 4px 0;
+    border-bottom: 1px dotted var(--line);
+  }
+  .summary-card .row-kv:last-child { border-bottom: none; }
+  .summary-card .k { color: var(--ink-dim); }
+  .summary-card .v { color: var(--ink); }
+  .summary-card .v.ok { color: var(--perfect); }
+  .summary-card .v.err { color: var(--danger); }
+
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 22px; }
+  .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 14px; }
+  @media (max-width: 960px) { .grid-2, .grid-3 { grid-template-columns: 1fr; } }
+
+  .pathline {
+    font-family: 'JetBrains Mono', monospace; font-size: 11px;
+    color: var(--ink-dim); word-break: break-all;
+    background: var(--panel-2); border: 1px solid var(--line);
+    padding: 8px 10px; border-radius: 3px;
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="app">
+    <div class="title-block">
+      <h1>Video <em>Annotations</em></h1>
+      <p>Annotate · view · crop · combine · consolidate — one studio</p>
+    </div>
+    <div class="server-status" id="serverStatus">
+      <span><span class="dot" id="dotEngine"></span>engine</span>
+      <span><span class="dot" id="dotFfmpeg"></span>ffmpeg</span>
+      <span><span class="dot" id="dotData"></span>data</span>
+    </div>
+  </header>
+
+  <nav class="tabs">
+    <button data-tab="annotate" class="active">Annotate</button>
+    <button data-tab="timeline">Timeline <em>viewer</em></button>
+    <button data-tab="crop">Crop</button>
+    <button data-tab="concat">Concat</button>
+    <button data-tab="consolidate">Consolidate</button>
+  </nav>
+
+  <!-- ============================== ANNOTATE ============================== -->
+  <section class="view active" id="view-annotate">
+    <div class="ann-shell">
+      <div class="frame-stage">
+        <div class="frame-info">
+          <div class="vid" id="annVideoName">—</div>
+          <div class="ts"  id="annTimestamp">—</div>
+        </div>
+        <div class="frame-img-wrap" id="annImgWrap">
+          <div class="placeholder">Loading first frame…</div>
+        </div>
+        <div class="label-row">
+          <button class="label-no"      id="btnNo">No <span style="opacity:.55">· 2</span></button>
+          <button class="label-yes"     id="btnYes">Yes <span style="opacity:.55">· 1</span></button>
+          <button class="label-perfect" id="btnPerfect">Perfect <span style="opacity:.55">· 3</span></button>
+          <button class="" id="btnUndo" title="Ctrl+Z">Undo</button>
+        </div>
+        <div class="keyhint">
+          Keys: <kbd>1</kbd> yes &nbsp; <kbd>2</kbd> no &nbsp; <kbd>3</kbd> perfect &nbsp; <kbd>Ctrl</kbd>+<kbd>Z</kbd> undo
+        </div>
+      </div>
+
+      <div class="sidebar">
+        <div class="panel">
+          <h3>Labels</h3>
+          <div class="stat-block">
+            <div class="cell"><div class="lbl">Perfect</div><div class="val perfect" id="cntPerfect">0</div></div>
+            <div class="cell"><div class="lbl">Yes</div>    <div class="val yes"     id="cntYes">0</div></div>
+            <div class="cell"><div class="lbl">No</div>     <div class="val no"      id="cntNo">0</div></div>
+          </div>
+        </div>
+
+        <div class="panel">
+          <h3>Coverage</h3>
+          <div class="meter">
+            <div><span id="covLabel">0/0 videos annotated</span></div>
+            <div class="bar"><div id="covBar" style="width:0%"></div></div>
+            <div style="display:flex;justify-content:space-between;margin-top:6px;color:var(--ink-faint);font-size:10px;letter-spacing:.06em;text-transform:uppercase">
+              <span>Total labels: <span id="cntTotal" style="color:var(--ink)">0</span></span>
+              <span>Undo: <span id="cntUndo" style="color:var(--ink)">0</span></span>
+            </div>
+          </div>
+        </div>
+
+        <div class="panel">
+          <h3>Pre-load Queue</h3>
+          <div class="meter">
+            <div class="bar"><div id="qBar" style="width:0%"></div></div>
+            <div style="margin-top:6px;font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-faint)">
+              <span id="qLabel">0/0 frames buffered</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="panel">
+          <h3>Source</h3>
+          <div class="info" style="margin-top:0">Video root</div>
+          <div class="pathline" id="pathVideoDir">—</div>
+          <div class="info">Annotation file</div>
+          <div class="pathline" id="pathAnnFile">—</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============================== TIMELINE ============================== -->
+  <section class="view" id="view-timeline">
+    <div class="controls">
+      <div class="panel">
+        <h3>Input data</h3>
+        <textarea id="tlInput" spellcheck="false"
+          placeholder="Paste annotations or load from the live file…
+Format: video.mp4 | 00:00:12.345=yes, 00:01:00.000=no, 00:01:30.000=perfect"></textarea>
+        <div class="btn-row" style="margin-top:10px">
+          <button id="tlLoadLive">Load live data</button>
+          <label class="file-label" for="tlFile">Load file…</label>
+          <input id="tlFile" type="file" accept=".txt,text/plain" />
+          <button id="tlClear">Clear</button>
+          <button id="tlRender" class="primary">Render →</button>
+        </div>
+        <div class="err" id="tlErr"></div>
+      </div>
+
+      <div class="panel">
+        <h3>Options</h3>
+        <div class="options">
+          <label class="field">
+            Bar resolution
+            <input id="tlWidth" type="number" min="40" max="2000" step="10" value="300" />
+          </label>
+          <label class="field">
+            Sort by
+            <select id="tlSort">
+              <option value="input">Input order</option>
+              <option value="name">Name (A→Z)</option>
+              <option value="duration">Duration (long→short)</option>
+              <option value="perfectPct">% perfect (high→low)</option>
+              <option value="yesPct">% yes (high→low)</option>
+            </select>
+          </label>
+          <label class="toggle" style="grid-column: 1 / -1; margin-top: 4px;">
+            <input type="checkbox" id="tlShowAxis" checked /> Show time axis
+          </label>
+          <label class="toggle" style="grid-column: 1 / -1;">
+            <input type="checkbox" id="tlUnlabeledNo" /> Treat unlabeled bins as "no"
+          </label>
+        </div>
+        <div class="legend" style="margin-top: 12px;">
+          <span class="swatch"><span class="dot no"></span>no</span>
+          <span class="swatch"><span class="dot yes"></span>yes</span>
+          <span class="swatch"><span class="dot perfect"></span>perfect</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="stats" id="tlStats" style="display:none;">
+      <div class="stat"><div class="label">Videos</div><div class="value" id="tlSVideos">0</div></div>
+      <div class="stat"><div class="label">Annotations</div><div class="value" id="tlSAnns">0</div></div>
+      <div class="stat"><div class="label">Perfect</div><div class="value" id="tlSPerfect">0<span class="unit">%</span></div></div>
+      <div class="stat"><div class="label">Yes</div><div class="value" id="tlSYes">0<span class="unit">%</span></div></div>
+      <div class="stat"><div class="label">Total duration</div><div class="value" id="tlSDur">0<span class="unit">s</span></div></div>
+    </div>
+
+    <div id="tlOutput" class="rows">
+      <div class="empty-state">
+        <div class="big">No timelines yet</div>
+        <div>Hit <strong style="color:var(--accent)">Load live data</strong> to pull from the current annotation file, or paste your own.</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============================== CROP ============================== -->
+  <section class="view" id="view-crop">
+    <div class="grid-2">
+      <div class="panel">
+        <h3>Cropper parameters</h3>
+        <div class="options">
+          <label class="field">Min perfects / cluster
+            <input id="cpMinPerf" type="number" min="1" max="50" step="1" value="3" /></label>
+          <label class="field">Max gap between perfects (s)
+            <input id="cpMaxGap" type="number" min="0" max="60" step="0.1" value="10" /></label>
+          <label class="field">Pre-roll (s)
+            <input id="cpPre" type="number" min="0" max="30" step="0.1" value="2" /></label>
+          <label class="field">Post-roll (s)
+            <input id="cpPost" type="number" min="0" max="30" step="0.1" value="2" /></label>
+          <label class="field">Merge gap (s)
+            <input id="cpMerge" type="number" min="0" max="30" step="0.1" value="3" /></label>
+          <label class="field">Max segments / video
+            <input id="cpMaxSeg" type="number" min="0" max="50" step="1" value="5" /></label>
+          <label class="field">Select top by
+            <select id="cpSelect">
+              <option value="most_perfects">Most perfects</option>
+              <option value="duration">Duration</option>
+            </select></label>
+          <label class="field">Run prefix
+            <input id="cpPrefix" type="text" value="run" /></label>
+          <label class="field">Source offset (0-based)
+            <input id="cpOffset" type="number" min="0" step="1" value="0" /></label>
+          <label class="field">Source limit (-1 = all)
+            <input id="cpLimit" type="number" min="-1" step="1" value="-1" /></label>
+          <label class="toggle" style="grid-column: 1 / -1; margin-top: 4px;">
+            <input type="checkbox" id="cpReencode" checked /> Re-encode (slower but accurate)
+          </label>
+        </div>
+        <div class="btn-row" style="margin-top:14px">
+          <button id="cpRun" class="primary">Start cropping →</button>
+        </div>
+      </div>
+
+      <div class="panel">
+        <h3>Live output</h3>
+        <div class="log" id="cpLog">Idle. Set parameters and press Start.</div>
+        <div id="cpSummary"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============================== CONCAT ============================== -->
+  <section class="view" id="view-concat">
+    <div class="grid-2">
+      <div class="panel">
+        <h3>Concat parameters</h3>
+        <div class="options">
+          <label class="field" style="grid-column: 1 / -1;">Source folder
+            <select id="ccFolder"><option value="">Loading…</option></select></label>
+          <label class="field">Output filename
+            <input id="ccOut" type="text" value="combined.mp4" /></label>
+          <label class="field">Extensions
+            <input id="ccExts" type="text" value=".mp4,.mov,.mkv,.m4v" /></label>
+          <label class="field">Target size (WxH, blank = first file)
+            <input id="ccSize" type="text" placeholder="1920x1080" /></label>
+          <label class="field">Target fps (blank = first file)
+            <input id="ccFps" type="text" placeholder="30000/1001" /></label>
+          <label class="toggle" style="grid-column: 1 / -1; margin-top: 4px;">
+            <input type="checkbox" id="ccRecursive" /> Recursive
+          </label>
+        </div>
+        <div class="btn-row" style="margin-top:14px">
+          <button id="ccRefreshFolders">Refresh folders</button>
+          <button id="ccRun" class="primary">Start concat →</button>
+        </div>
+      </div>
+
+      <div class="panel">
+        <h3>Live output</h3>
+        <div class="log" id="ccLog">Idle. Pick a folder and press Start.</div>
+        <div id="ccSummary"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============================== CONSOLIDATE ============================== -->
+  <section class="view" id="view-consolidate">
+    <div class="grid-2">
+      <div class="panel">
+        <h3>Inputs</h3>
+        <div class="btn-row">
+          <label class="file-label" for="conFiles">Choose files…</label>
+          <input id="conFiles" type="file" accept=".txt,text/plain" multiple />
+          <button id="conRun" class="primary">Consolidate →</button>
+        </div>
+        <div class="info" id="conFileList">No files chosen.</div>
+
+        <div class="options" style="margin-top: 14px;">
+          <label class="field">Output filename
+            <input id="conOutName" type="text" value="consolidated_annotations.txt" /></label>
+          <label class="field">Conflict mode
+            <select id="conMode">
+              <option value="strongest">Strongest wins (perfect &gt; yes &gt; no)</option>
+              <option value="first">Keep first</option>
+              <option value="last">Keep last</option>
+            </select></label>
+          <label class="toggle" style="grid-column: 1 / -1; margin-top: 4px;">
+            <input type="checkbox" id="conInferFolders" checked /> Infer parent folders for bare filenames
+          </label>
+        </div>
+        <div class="err" id="conErr"></div>
+      </div>
+
+      <div class="panel">
+        <h3>Summary</h3>
+        <div id="conSummary" class="info">Run the consolidator to see results here.</div>
+      </div>
+    </div>
+  </section>
+
+</div>
+
+<div class="tooltip" id="tooltip"></div>
+
+<script src="/static/app.js"></script>
+</body>
+</html>
